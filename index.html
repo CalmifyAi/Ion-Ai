@@ -1,160 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>OMNIS AI</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&family=Inter:wght@300;400&display=swap" rel="stylesheet">
+
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+
+body{
+  font-family:'Inter',sans-serif;
+  background:radial-gradient(circle at top,#2a004f,#05000b);
+  color:#eee;
+  overflow-x:hidden;
+}
+
+/* MATRIX BACKGROUND (CLEAN) */
+canvas{
+  position:fixed;
+  inset:0;
+  z-index:-1;
+}
+
+/* GLASS CARD */
+.glass{
+  background:linear-gradient(145deg,rgba(180,120,255,.15),rgba(50,0,90,.35));
+  backdrop-filter:blur(28px);
+  border-radius:30px;
+  border:1px solid rgba(200,160,255,.3);
+  box-shadow:0 0 120px rgba(160,90,255,.4);
+}
+
+/* HERO */
+#hero{
+  max-width:1200px;
+  margin:90px auto;
+  padding:60px;
+}
+
+nav{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:50px;
+}
+
+.logo{
+  font-family:'Orbitron',sans-serif;
+  letter-spacing:5px;
+  color:#d9b6ff;
+}
+
+nav button{
+  background:none;
+  border:none;
+  color:#ccc;
+  font-size:14px;
+  cursor:pointer;
+}
+nav button:hover{color:#d9b6ff}
+
+.hero-grid{
+  display:grid;
+  grid-template-columns:1.2fr .8fr;
+  gap:50px;
+  align-items:center;
+}
+
+.hero-text h1{
+  font-family:'Orbitron',sans-serif;
+  font-size:3.4rem;
+}
+.hero-text span{
+  color:#b98cff;
+  text-shadow:0 0 30px #b98cff;
+}
+.hero-text p{
+  margin:25px 0;
+  opacity:.9;
+}
+.hero-text button{
+  padding:18px 46px;
+  border-radius:50px;
+  border:none;
+  background:linear-gradient(135deg,#7b4bff,#c77dff);
+  color:white;
+  cursor:pointer;
+  font-size:16px;
+  box-shadow:0 0 45px rgba(160,90,255,.7);
+}
+
+.hero-ai img{
+  width:100%;
+  border-radius:26px;
+  box-shadow:0 0 120px rgba(160,90,255,.6);
+}
+
+/* APP */
+#app{
+  display:none;
+  max-width:900px;
+  margin:90px auto;
+  padding:60px;
+}
+
+textarea{
+  width:100%;
+  min-height:140px;
+  padding:22px;
+  border-radius:22px;
+  background:rgba(255,255,255,.06);
+  border:1px solid rgba(190,140,255,.35);
+  color:white;
+  font-size:15px;
+  outline:none;
+}
+
+.analyze{
+  margin-top:30px;
+  padding:18px 44px;
+  border-radius:40px;
+  border:none;
+  background:linear-gradient(135deg,#7b4bff,#c77dff);
+  color:white;
+  cursor:pointer;
+  box-shadow:0 0 40px rgba(160,90,255,.7);
+}
+
+.result{
+  margin-top:40px;
+  padding:35px;
+  border-radius:26px;
+  background:rgba(255,255,255,.06);
+}
+</style>
+</head>
+
+<body>
+
+<canvas id="matrix"></canvas>
+
+<div id="hero" class="glass">
+  <nav>
+    <div class="logo">OMNIS AI</div>
+    <div>
+      <button onclick="home()">HOME</button>
+      <button onclick="enter()">ENTER</button>
+    </div>
+  </nav>
+
+  <div class="hero-grid">
+    <div class="hero-text">
+      <h1>God-Level <span>Artificial Intelligence</span></h1>
+      <p>A cinematic AI system that analyzes any subject with clarity, depth, and intelligence.</p>
+      <button onclick="enter()">GET STARTED</button>
+    </div>
+    <div class="hero-ai">
+      <img src="https://images.unsplash.com/photo-1620712943543-bcc4688e7485?q=80&w=900">
+    </div>
+  </div>
+</div>
+
+<div id="app" class="glass">
+  <h2>SUBJECT ANALYSIS</h2>
+  <textarea id="input" placeholder="Describe an idea, image, concept, or system..."></textarea>
+  <button class="analyze" onclick="analyze()">RUN AI ANALYSIS</button>
+  <div id="output" class="result"></div>
+</div>
+
 <script>
-/* =========================
-   AUDIO BOOT + AI VOICE
-========================= */
-function bootSound() {
-  const ctx = new AudioContext();
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  osc.type = "sawtooth";
-  osc.frequency.setValueAtTime(80, ctx.currentTime);
-  osc.frequency.exponentialRampToValueAtTime(420, ctx.currentTime + 1.2);
-  gain.gain.setValueAtTime(0.15, ctx.currentTime);
-  osc.connect(gain).connect(ctx.destination);
-  osc.start();
-  osc.stop(ctx.currentTime + 1.2);
-}
+/* MATRIX (SMOOTH) */
+const c=document.getElementById("matrix"),x=c.getContext("2d");
+c.width=innerWidth;c.height=innerHeight;
+const chars="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+const font=16,cols=c.width/font;
+const drops=Array(Math.floor(cols)).fill(1);
 
-function speak(text) {
-  const u = new SpeechSynthesisUtterance(text);
-  u.rate = 0.9 + Math.random() * 0.2;
-  u.pitch = 0.8 + Math.random() * 0.4;
-  speechSynthesis.speak(u);
-}
-
-/* =========================
-   MATRIX RAIN
-========================= */
-const matrixCanvas = document.getElementById("matrix");
-const mtx = matrixCanvas.getContext("2d");
-matrixCanvas.width = innerWidth;
-matrixCanvas.height = innerHeight;
-
-const chars = "アカサタナABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-const size = 16;
-const columns = matrixCanvas.width / size;
-const drops = Array.from({ length: columns }).fill(1);
-
-function matrix() {
-  mtx.fillStyle = "rgba(0,0,0,0.08)";
-  mtx.fillRect(0,0,matrixCanvas.width,matrixCanvas.height);
-  mtx.fillStyle = "#b98cff";
-  mtx.font = size + "px monospace";
+setInterval(()=>{
+  x.fillStyle="rgba(0,0,0,.08)";
+  x.fillRect(0,0,c.width,c.height);
+  x.fillStyle="#b98cff";
+  x.font=font+"px monospace";
   drops.forEach((y,i)=>{
-    const t = chars[Math.floor(Math.random()*chars.length)];
-    mtx.fillText(t, i*size, y*size);
-    drops[i] = y*size > matrixCanvas.height && Math.random()>0.975 ? 0 : y+1;
+    x.fillText(chars[Math.random()*chars.length|0],i*font,y*font);
+    drops[i]=y*font>c.height&&Math.random()>0.98?0:y+1;
   });
+},45);
+
+/* NAV */
+function enter(){
+  hero.style.display="none";
+  app.style.display="block";
 }
-setInterval(matrix, 45);
+function home(){
+  app.style.display="none";
+  hero.style.display="block";
+}
 
-/* =========================
-   THINKING BAR
-========================= */
-function thinkingBar(cb) {
-  let p = 0;
-  output.innerHTML = `<h3>INITIALIZING AI CORE</h3><div id="bar"></div>`;
-  const bar = document.getElementById("bar");
-  bar.style.height = "8px";
-  bar.style.background = "#7f4bff";
-  bar.style.width = "0%";
-  bar.style.transition = "width 0.3s";
+/* GOD AI ENGINE */
+function analyze(){
+  const t=input.value.toLowerCase();
+  if(!t)return;
 
-  const phases = [
-    "Parsing input",
-    "Detecting patterns",
-    "Cross-referencing signals",
-    "Synthesizing insight"
+  const topics={
+    technology:["AI","systems","automation","computation"],
+    biology:["life","cells","evolution","neural processes"],
+    space:["cosmos","gravity","time","expansion"],
+    society:["power","culture","economics","collective behavior"],
+    abstract:["patterns","meaning","emergence","structure"]
+  };
+
+  let domain="abstract";
+  if(/ai|code|robot|system/.test(t))domain="technology";
+  else if(/human|brain|dna|health/.test(t))domain="biology";
+  else if(/space|planet|galaxy/.test(t))domain="space";
+  else if(/people|society|economy|culture/.test(t))domain="society";
+
+  const summary=[
+    "This subject demonstrates layered complexity with interconnected elements.",
+    "The concept operates through adaptive and evolving mechanisms.",
+    "Multiple forces interact to create emergent outcomes."
   ];
 
-  let i = 0;
-  const timer = setInterval(()=>{
-    p += Math.random()*18;
-    bar.style.width = Math.min(p,100)+"%";
-    if(p > i*25 && i < phases.length) {
-      output.innerHTML += `<p>${phases[i++]}</p>`;
-    }
-    if(p >= 100) {
-      clearInterval(timer);
-      cb();
-    }
-  }, 350);
-}
+  const insights=[
+    "Long-term influence is significant.",
+    "Scalability potential detected.",
+    "System stability appears high.",
+    "Ethical considerations may arise."
+  ];
 
-/* =========================
-   AI ENGINE
-========================= */
-const AI = {
-  domains: {
-    tech: /ai|robot|code|system|software/,
-    bio: /brain|human|dna|health|biology/,
-    space: /space|planet|galaxy|universe/,
-    social: /society|economy|culture|people/
-  },
-  responses: {
-    tech: [
-      "System architecture displays adaptive intelligence.",
-      "Algorithmic efficiency is a dominant signal.",
-      "Recursive optimization potential detected."
-    ],
-    bio: [
-      "Organic systems show self-regulating behavior.",
-      "Feedback loops dominate biological processes.",
-      "Adaptive evolution detected."
-    ],
-    space: [
-      "Cosmic-scale forces govern system behavior.",
-      "Temporal distances exceed human intuition.",
-      "Observation constraints reduce certainty."
-    ],
-    social: [
-      "Emergent behavior shapes collective outcomes.",
-      "Feedback amplification detected.",
-      "Stability varies with external pressure."
-    ],
-    abstract: [
-      "Concept operates on symbolic abstraction.",
-      "Meaning varies by observer.",
-      "Multi-layer interpretation detected."
-    ]
-  },
-  analyze(text) {
-    let domain = "abstract";
-    for (const d in this.domains) {
-      if (this.domains[d].test(text)) domain = d;
-    }
-
-    const words = [...new Set(text.split(/\W+/).filter(w=>w.length>4))];
-    return {
-      domain,
-      insight: this.responses[domain][Math.floor(Math.random()*this.responses[domain].length)],
-      keywords: words.slice(0,5),
-      confidence: (80 + Math.random()*19).toFixed(1)
-    };
-  }
-};
-
-/* =========================
-   FINAL ANALYZE
-========================= */
-function analyze() {
-  const text = input.value;
-  if (!text) return;
-
-  bootSound();
-  thinkingBar(()=>{
-    const r = AI.analyze(text);
-
-    output.innerHTML = `
-      <h3>AI CORE ONLINE</h3>
-      <p><strong>Domain:</strong> ${r.domain.toUpperCase()}</p>
-      <p><strong>Keywords:</strong> ${r.keywords.join(", ") || "General patterns"}</p>
-      <p><strong>Insight:</strong> ${r.insight}</p>
-      <p><strong>Confidence:</strong> ${r.confidence}%</p>
-      <p>Status: <span style="color:#7fffba">STABLE</span></p>
-    `;
-
-    speak(`Analysis complete. Domain ${r.domain}. Confidence ${r.confidence} percent.`);
-  });
+  output.innerHTML=`
+    <h3>AI ANALYSIS COMPLETE</h3>
+    <p><strong>Domain:</strong> ${domain.toUpperCase()}</p>
+    <p><strong>Summary:</strong> ${summary[Math.random()*summary.length|0]}</p>
+    <p><strong>Key Focus:</strong> ${topics[domain].join(", ")}</p>
+    <p><strong>Insight:</strong> ${insights[Math.random()*insights.length|0]}</p>
+    <p><strong>Confidence:</strong> ${(82+Math.random()*16).toFixed(1)}%</p>
+    <p>Status: <span style="color:#7fffba">OPTIMAL</span></p>
+  `;
 }
 </script>
+
+</body>
+</html>

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Ion AI</title>
+  <title>EnergiAI</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     body { margin:0; font-family:Arial,sans-serif; background:linear-gradient(135deg,#f8fafc,#eef2f7); color:#111827; }
@@ -32,7 +32,7 @@
 
 <header>
   <nav>
-    <div>Ion AI</div>
+    <div>EnergiAI</div>
     <div>
       <span id="navFeatures">Features</span>
       <span id="navHow">How it Works</span>
@@ -52,22 +52,16 @@
 <main>
   <div class="card">
     <h2>Your Home Inputs</h2>
-    <label>Current Electricity Price ($/kWh)</label>
+    <p style="font-size:0.85rem;opacity:0.75;">EnergiAI estimates per-device energy usage locally using realistic wattage models. No hardware required.</p>
+
+    <label>Electricity Price ($/kWh)</label>
     <input type="number" id="price" value="0.22" step="0.01" />
-    <label>Home Size (sq ft)</label>
-    <input type="number" id="size" value="1800" />
-    <label>Active Devices</label>
-    <input type="range" id="devices" min="1" max="20" value="8" />
-    <span class="value" id="devicesVal">8</span>
-    <label>HVAC Usage Level</label>
-    <input type="range" id="hvac" min="0" max="100" value="60" />
-    <span class="value" id="hvacVal">60%</span>
-    <label>Time of Day</label>
-    <select id="time">
-      <option value="off">Off-Peak</option>
-      <option value="mid">Mid-Peak</option>
-      <option value="peak">Peak</option>
-    </select>
+
+    <h3 style="margin-top:20px;">Tracked Devices</h3>
+    <div id="deviceList"></div>
+
+    <button id="addDevice" style="margin-top:12px;padding:10px 14px;border-radius:10px;border:1px solid #e5e7eb;background:#f9fafb;cursor:pointer;">+ Add Device</button>
+    <button id="optimizeBtn" style="margin-top:12px;margin-left:10px;padding:10px 14px;border-radius:10px;border:none;background:#16a34a;color:white;cursor:pointer;">⚡ Auto Optimize</button>
   </div>
 
   <div class="card">
@@ -88,100 +82,120 @@
 </footer>
 
 <script>
-const devices = document.getElementById('devices');
-const hvac = document.getElementById('hvac');
 const priceEl = document.getElementById('price');
-const sizeEl = document.getElementById('size');
-const timeEl = document.getElementById('time');
-const chartEl = document.getElementById('chart');
-const devicesVal = document.getElementById('devicesVal');
-const hvacVal = document.getElementById('hvacVal');
+const deviceList = document.getElementById('deviceList');
+const addDeviceBtn = document.getElementById('addDevice');
 const usage = document.getElementById('usage');
 const cost = document.getElementById('cost');
 const savings = document.getElementById('savings');
+const chartEl = document.getElementById('chart');
 const tips = document.getElementById('tips');
-
-devices.oninput = () => devicesVal.textContent = devices.value;
-hvac.oninput = () => hvacVal.textContent = hvac.value + '%';
-const inputs = document.querySelectorAll('input, select');
-inputs.forEach(i => i.addEventListener('input', calculate));
-
 const ctx = chartEl.getContext('2d');
 
-function calculate() {
+let tracking = false;
+let devices = JSON.parse(localStorage.getItem('devices') || '[]');
+let totalKwh = 0;
+
+function defaultDevice() {
+  return { name: 'New Device', watts: 100, kwh: 0, cost: 0 };
+}
+
+function renderDevices() {
+  deviceList.innerHTML = '';
+  devices.forEach((d, i) => {
+    const row = document.createElement('div');
+    row.style.marginBottom = '10px';
+    row.innerHTML = `
+      <input value="${d.name}" style="width:40%" onchange="devices[${i}].name=this.value;saveDevices()" />
+      <input type="number" value="${d.watts}" style="width:25%" onchange="devices[${i}].watts=this.value;saveDevices()" /> W
+      <span style="float:right">$${d.cost.toFixed(4)}</span>
+    `;
+    deviceList.appendChild(row);
+  });
+}
+
+function saveDevices() {
+  localStorage.setItem('devices', JSON.stringify(devices));
+}
+
+addDeviceBtn.onclick = () => {
+  devices.push(defaultDevice());
+  saveDevices();
+  renderDevices();
+};
+
+function startTracking() {
+  if (tracking) return;
+  tracking = true;
+  tips.innerHTML = '<li>Live device tracking started.</li>';
+  setInterval(trackUsage, 1000);
+}
+
+function autoOptimize() {
+  let optimized = false;
+  devices.forEach(d => {
+    if (d.watts > 300) {
+      const old = d.watts;
+      d.watts = Math.round(d.watts * 0.85);
+      optimized = true;
+      addTip(`AI reduced ${d.name} from ${old}W → ${d.watts}W`);
+    }
+  });
+  if (!optimized) addTip('AI found no high-energy devices to optimize.');
+  saveDevices();
+  renderDevices();
+}
+
+
+function trackUsage() {
   const price = parseFloat(priceEl.value);
-  const size = parseInt(sizeEl.value);
-  const dev = parseInt(devices.value);
-  const hv = parseInt(hvac.value);
-  const time = timeEl.value;
+  let dailyKwh = 0;
 
-  let baseUsage = size * 0.012 + dev * 0.8;
-  let hvacLoad = hv * 0.15;
-  let timeMultiplier = time === 'peak' ? 1.25 : time === 'mid' ? 1.1 : 0.9;
+  devices.forEach(d => {
+    const kwh = (d.watts / 1000) / 3600; // per second
+    d.kwh += kwh;
+    d.cost += kwh * price;
+    dailyKwh += d.kwh;
+  });
 
-  let dailyUsage = (baseUsage + hvacLoad) * timeMultiplier;
-  let optimizedUsage = dailyUsage * 0.78;
-  let dailyCost = dailyUsage * price;
-  let monthlySavings = (dailyUsage - optimizedUsage) * price * 30;
+  totalKwh = dailyKwh;
+  usage.textContent = (dailyKwh * 24).toFixed(2);
+  cost.textContent = (dailyKwh * price * 24).toFixed(2);
+  savings.textContent = ((dailyKwh * price * 24) * 0.22).toFixed(2);
 
-  usage.textContent = dailyUsage.toFixed(1);
-  cost.textContent = dailyCost.toFixed(2);
-  savings.textContent = monthlySavings.toFixed(2);
-
-  storeHistory(dailyUsage);
-  renderChart(dailyUsage, optimizedUsage);
-  generateTips(dev, hv, time, dailyUsage);
+  saveDevices();
+  renderDevices();
+  renderChart();
 }
 
-function storeHistory(value) {
-  let history = JSON.parse(localStorage.getItem('energyHistory') || '[]');
-  history.push({ value, date: Date.now() });
-  if (history.length > 7) history.shift();
-  localStorage.setItem('energyHistory', JSON.stringify(history));
-}
-
-function renderChart(actual, optimized) {
+function renderChart() {
   ctx.clearRect(0,0,chartEl.width,chartEl.height);
-  const hours = 24;
-  const barWidth = chartEl.width / hours;
-  for (let i=0;i<hours;i++){
-    const noise=Math.random()*0.3+0.85;
-    const hActual=actual/hours*noise*40;
-    const hOpt=optimized/hours*noise*40;
-    ctx.fillStyle='#e5e7eb';
-    ctx.fillRect(i*barWidth,chartEl.height-hActual,barWidth-2,hActual);
-    ctx.fillStyle='#16a34a';
-    ctx.fillRect(i*barWidth,chartEl.height-hOpt,barWidth-6,hOpt);
-  }
+  const barWidth = chartEl.width / devices.length;
+  devices.forEach((d, i) => {
+    const h = Math.min(d.kwh * 800, chartEl.height);
+    ctx.fillStyle = '#16a34a';
+    ctx.fillRect(i * barWidth, chartEl.height - h, barWidth - 8, h);
+  });
 }
 
-function generateTips(dev,hv,time,usageVal){
-  tips.innerHTML='';
-  const history=JSON.parse(localStorage.getItem('energyHistory')||'[]');
-  if(history.length>=2){
-    const diff=history[history.length-2].value-usageVal;
-    if(diff>0) addTip(`Your usage improved by ${diff.toFixed(1)} kWh since last session.`);
-  }
-  if(time==='peak') addTip('Shift heavy usage to off-peak hours for instant savings.');
-  if(hv>70) addTip('Lower HVAC by 5–10% to reduce energy spikes.');
-  if(dev>10) addTip('Use smart power strips to cut standby energy.');
-  addTip('AI recommends spreading high-load tasks across the day.');
-}
+// Button hooks
+document.getElementById('startBtn').onclick = () => {
+  document.querySelector('main').scrollIntoView({ behavior: 'smooth' });
+  startTracking();
+};
 
-function addTip(text){const li=document.createElement('li');li.textContent=text;tips.appendChild(li);}
+document.getElementById('learnBtn').onclick = () => {
+  alert('EnergiAI estimates real-time device energy cost locally using wattage models.');
+};
 
-calculate();
+// Auto optimization button
+document.getElementById('optimizeBtn').onclick = () => {
+  autoOptimize();
+};
+};
 
-// Button interactions
-document.getElementById('startBtn').onclick=()=>{document.querySelector('main').scrollIntoView({behavior:'smooth'});};
-document.getElementById('learnBtn').onclick=()=>{alert('EnergiAI helps you reduce energy costs using private, local AI — no cloud, no tracking, no hardware required.');};
-
-// Navigation smooth scroll
-document.getElementById('navFeatures').onclick=()=>alert('Feature section coming soon!');
-document.getElementById('navHow').onclick=()=>alert('How it works section coming soon!');
-document.getElementById('navPricing').onclick=()=>alert('Pricing section coming soon!');
+renderDevices();
 </script>
 
 </body>
 </html>
-

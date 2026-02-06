@@ -52,7 +52,7 @@
 
 <header>
   <nav style="display:flex;justify-content:space-between;align-items:center;max-width:1200px;margin:0 auto;">
-    <div style="font-weight:700;font-size:1.2rem;">⚡ EnergiAI</div>
+    <div style="font-weight:700;font-size:1.2rem;">Ion Ai</div>
     <div style="display:flex;gap:20px;font-size:0.9rem;opacity:0.9;">
       <span>Features</span>
       <span>How it Works</span>
@@ -63,8 +63,8 @@
     <h1 style="font-size:2.8rem;max-width:520px;">Your Personal Energy Intelligence Platform</h1>
     <p style="max-width:520px;opacity:0.85;">Optimize home energy usage in real time using private, local AI — no smart meters, no cloud, no tracking.</p>
     <div style="margin-top:24px;display:flex;gap:14px;">
-      <button style="padding:12px 20px;border-radius:999px;border:none;background:#2563eb;color:white;font-weight:600;">Start Optimizing</button>
-      <button style="padding:12px 20px;border-radius:999px;border:1px solid #e5e7eb;background:white;">Learn More</button>
+      <button id="startBtn" style="padding:12px 20px;border-radius:999px;border:none;background:#2563eb;color:white;font-weight:600;cursor:pointer;">Start Optimizing</button>
+      <button id="learnBtn" style="padding:12px 20px;border-radius:999px;border:1px solid #e5e7eb;background:white;cursor:pointer;">Learn More</button>
     </div>
   </div>
 </header>
@@ -177,6 +177,15 @@
   }
 
   calculate();
+
+  // Button interactions
+  document.getElementById('startBtn').onclick = () => {
+    document.querySelector('main').scrollIntoView({ behavior: 'smooth' });
+  };
+
+  document.getElementById('learnBtn').onclick = () => {
+    alert('EnergiAI helps you reduce energy costs using private, local AI — no cloud, no tracking, no hardware required.');
+  };
 </script>
 
 </body>
